@@ -37,6 +37,7 @@ Tests use RSpec with FactoryBot (`create(:book)` syntax) and shoulda-matchers. S
 
 - Generated with `rails new . --api -d postgresql -T --skip-kamal --skip-thruster --skip-action-cable --skip-active-storage --skip-action-mailbox`. Don't reintroduce the skipped frameworks without a reason.
 - Background jobs use Solid Queue, and recurring jobs are defined in `config/recurring.yml`. Solid Queue uses a separate `queue` database in development and production (`config/database.yml`; the schema is `db/queue_schema.rb`). In test, Active Job uses the test adapter.
+- Code is organized into domains under `app/domains/` (`Catalog`, `Readers`, `Lending`), each owning its tables and exposing a public interface on the domain module; controllers in `app/controllers` are a separate HTTP layer that composes domains. See ADR 0004 for the rules.
 - Planned design, not yet implemented: `books`, `readers` and `borrowings` tables. A book's status comes from its open borrowing (`returned_at IS NULL`), enforced by a partial unique index. Reminders come from one daily recurring job rather than delayed jobs per borrowing.
 
 ## Conventions
