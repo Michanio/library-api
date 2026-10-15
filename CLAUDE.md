@@ -20,13 +20,18 @@ Development runs in Docker Compose (`compose.yaml`, `Dockerfile.dev`); there is 
 ```bash
 docker compose up                                    # start db, web, jobs
 docker compose exec web bin/rails db:migrate         # also dumps db/schema.rb and db/queue_schema.rb
+docker compose exec web bin/rails db:test:prepare    # loads db/schema.rb into the test DB; rerun after migrations
+docker compose exec web bundle exec rspec            # all specs
+docker compose exec web bundle exec rspec spec/path_spec.rb:LINE
 docker compose exec web bin/rubocop                  # lint (rubocop-rails-omakase)
 docker compose exec web bin/brakeman --no-pager
 docker compose exec web bin/ci                       # steps from config/ci.rb
 docker compose build                                 # after Gemfile changes
 ```
 
-No test framework is installed yet: the app was generated with `-T`, and RSpec is planned. CI (`.github/workflows/ci.yml`) runs Brakeman, bundler-audit and RuboCop only.
+Don't set `RAILS_ENV` in `compose.yaml`: `spec/rails_helper.rb` uses `ENV["RAILS_ENV"] ||= "test"`, so a global value would run the specs against the development database.
+
+Tests use RSpec with FactoryBot (`create(:book)` syntax) and shoulda-matchers. Support files live in `spec/support/`. CI (`.github/workflows/ci.yml`) runs Brakeman, bundler-audit, RuboCop and RSpec against a Postgres service.
 
 ## Architecture notes
 
