@@ -1,0 +1,23 @@
+# Development image used by compose.yaml. The production image is built from Dockerfile.
+ARG RUBY_VERSION=4.0.1
+FROM docker.io/library/ruby:$RUBY_VERSION-slim
+
+WORKDIR /rails
+
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y build-essential curl git libpq-dev libyaml-dev pkg-config && \
+    rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+COPY Gemfile Gemfile.lock ./
+RUN bundle install
+
+# Run as a user matching the host UID/GID so files created in the mounted
+# source tree (db/schema.rb, logs) are owned by the host user.
+ARG UID=1000
+ARG GID=1000
+RUN groupadd --gid $GID rails && \
+    useradd rails --uid $UID --gid $GID --create-home --shell /bin/bash
+USER rails
+
+EXPOSE 3000
+CMD ["bin/rails", "server", "-b", "0.0.0.0"]

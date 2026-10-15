@@ -1,0 +1,50 @@
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile.dev
+  volumes:
+    - .:/rails
+  environment:
+    DB_HOST: db
+    DB_USERNAME: postgres
+    DB_PASSWORD: postgres
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  web:
+    <<: *app
+    command: bash -c "rm -f tmp/pids/server.pid && bin/rails db:prepare && exec bin/rails server -b 0.0.0.0"
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:3000/up"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  jobs:
+    <<: *app
+    command: bin/jobs
+    depends_on:
+      # Waits for web, which prepares the databases (including Solid Queue tables).
+      web:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
