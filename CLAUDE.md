@@ -15,22 +15,23 @@ Requirements from the task brief (not stored elsewhere in the repo):
 
 ## Commands
 
+Development runs in Docker Compose (`compose.yaml`, `Dockerfile.dev`); there is no local PostgreSQL. Services: `db` (Postgres 17), `web` (runs `db:prepare`, then the server on :3000), `jobs` (`bin/jobs`, Solid Queue).
+
 ```bash
-bin/setup --skip-server         # install gems, prepare DB
-bin/rails server                # or bin/dev
-bin/jobs                        # Solid Queue worker/dispatcher/scheduler
-bin/rubocop                     # lint (rubocop-rails-omakase)
-bin/brakeman --no-pager         # security static analysis
-bin/bundler-audit               # gem vulnerability audit
-bin/ci                          # runs the steps in config/ci.rb
+docker compose up                                    # start db, web, jobs
+docker compose exec web bin/rails db:migrate         # also dumps db/schema.rb and db/queue_schema.rb
+docker compose exec web bin/rubocop                  # lint (rubocop-rails-omakase)
+docker compose exec web bin/brakeman --no-pager
+docker compose exec web bin/ci                       # steps from config/ci.rb
+docker compose build                                 # after Gemfile changes
 ```
 
-No test framework is installed yet: the app was generated with `-T`, and RSpec is planned. Once it is added, run `bundle exec rspec` (single file: `bundle exec rspec spec/path_spec.rb:LINE`) and add a test job to `.github/workflows/ci.yml` and `config/ci.rb`.
+No test framework is installed yet: the app was generated with `-T`, and RSpec is planned. CI (`.github/workflows/ci.yml`) runs Brakeman, bundler-audit and RuboCop only.
 
 ## Architecture notes
 
 - Generated with `rails new . --api -d postgresql -T --skip-kamal --skip-thruster --skip-action-cable --skip-active-storage --skip-action-mailbox`. Don't reintroduce the skipped frameworks without a reason.
-- Background jobs use Solid Queue, and recurring jobs are defined in `config/recurring.yml`. Out of the box, Solid Queue is only configured for production, with a separate `queue` database (`config/database.yml`, `config/environments/production.rb`). Running it in development and Docker needs explicit configuration.
+- Background jobs use Solid Queue, and recurring jobs are defined in `config/recurring.yml`. Solid Queue uses a separate `queue` database in development and production (`config/database.yml`; the schema is `db/queue_schema.rb`). In test, Active Job uses the test adapter.
 - Planned design, not yet implemented: `books`, `readers` and `borrowings` tables. A book's status comes from its open borrowing (`returned_at IS NULL`), enforced by a partial unique index. Reminders come from one daily recurring job rather than delayed jobs per borrowing.
 
 ## Conventions
