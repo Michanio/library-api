@@ -1,0 +1,20 @@
+# <%= number %>. <%= title %>
+
+Date: <%= Date.current.iso8601 %>
+Status: <%= options[:status] %>
+
+## Context
+
+<!-- What problem or force motivates this decision? -->
+
+## Decision
+
+<!-- What is the change we are making? -->
+
+## Alternatives considered
+
+<!-- What else was evaluated, and why was it rejected? -->
+
+## Consequences
+
+<!-- What becomes easier or harder? List both positives (+) and negatives (−). -->

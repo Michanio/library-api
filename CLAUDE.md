@@ -35,6 +35,6 @@ No test framework is installed yet: the app was generated with `-T`, and RSpec i
 
 ## Conventions
 
-- Significant design decisions (real trade-offs) are recorded as ADRs in `docs/adr/` as numbered Markdown files (`0001-title.md`) with Context / Decision / Alternatives considered / Consequences. Read the existing ADRs before proposing changes, flag any proposal that contradicts an accepted ADR, and propose a new ADR when a decision has real trade-offs.
+- Significant design decisions (real trade-offs) are recorded as ADRs in `docs/adr/` as numbered Markdown files (`0001-title.md`) with Context / Decision / Alternatives considered / Consequences. Create them with `bin/rails g adr "Title" [--status=Accepted]` (`lib/generators/adr/`). Read the existing ADRs before proposing changes, flag any proposal that contradicts an accepted ADR, and propose a new ADR when a decision has real trade-offs.
 - The user prefers to run generators (`rails g ...`) themselves. Provide the command instead of running it unless asked.
 - Before finishing a change, run `bin/rubocop` and the test suite.
