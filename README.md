@@ -78,4 +78,5 @@ Every significant decision is recorded as an ADR in [`docs/adr/`](docs/adr/), wi
 - **Emails are only logged.** Real delivery needs SMTP settings; a mail catcher such as Mailpit could be added for local testing.
 - **Deleting a book while it's being borrowed** is checked, then executed, without a lock, leaving a milliseconds-wide race window.
 - **Domain boundaries** (`app/domains/`) are enforced by convention only; packwerk could check them in CI.
+- **Not every error is a problem details response:** unexpected 500 errors and URLs that match no route get Rails' default error body, and 405 responses don't include an `Allow` header.
 - **The Compose setup isn't production-ready:** development settings, hard-coded credentials, no TLS.

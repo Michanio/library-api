@@ -28,6 +28,8 @@ Rails.application.configure do
 
   # Emails are written to the log instead of being sent (config/initializers/log_delivery.rb).
   config.action_mailer.delivery_method = :log
+  # LogDelivery already logs each email; Action Mailer's own log would print it again.
+  config.action_mailer.logger = nil
   config.action_mailer.raise_delivery_errors = true
 
   # Make template changes take effect immediately.
