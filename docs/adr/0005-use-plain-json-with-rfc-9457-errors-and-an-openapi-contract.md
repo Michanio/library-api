@@ -26,6 +26,7 @@ Responses use `application/json` with no envelope standard on top. The conventio
 - **Books are addressed by serial number in URLs** (`/books/000123`). Internal database IDs aren't exposed.
 - **Timestamps are RFC 3339 `date-time` strings in UTC.** The due date is a `date` (`due_on`), because a loan is due on a day, and reminders are sent per day.
 - **Book status is a derived field**, `"status": "available" | "borrowed"`.
+- **State transitions are action endpoints**: `POST /books/{serial_number}/borrow` (body: the reader's library card number) and `POST /books/{serial_number}/return` (no body), each returning the updated book. They implement the brief's "update the book status" requirement. The intent is in the URL, so each request body has one strict schema, and each endpoint maps to one domain operation (`Lending.borrow`, `Lending.return`). We prefer this to a generic `PATCH /books/{serial_number}/status`, which needs a body that says which transition is meant, and to modelling borrowings as a separate resource that has no use of its own yet.
 
 ### Errors: RFC 9457 problem details
 
