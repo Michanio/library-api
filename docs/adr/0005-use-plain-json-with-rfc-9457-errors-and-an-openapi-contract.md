@@ -52,6 +52,7 @@ Status codes:
 | Status | `type` | When |
 |---|---|---|
 | 400 | `urn:library-api:problem:invalid-request` | The body isn't valid JSON or doesn't match the OpenAPI schema (wrong type, missing or unknown field, bad format). |
+| 405, 415 | `about:blank` | The method isn't documented for the path, or the request's content type isn't. |
 | 404 | `about:blank` | No book with that serial number. |
 | 409 | `urn:library-api:problem:book-borrowed` | The book is currently borrowed, so it can't be deleted or borrowed again. |
 | 409 | `urn:library-api:problem:book-not-borrowed` | Returning a book that isn't borrowed. |
@@ -59,16 +60,16 @@ Status codes:
 
 The split between 400 and 422 follows the split between layers: 400 means the request doesn't match the contract, and 422 means it matches the contract but the domain rejected it.
 
-### Contract: OpenAPI 3.0 in `docs/openapi.yaml`
+### Contract: OpenAPI 3.1 in `docs/openapi.yaml`, enforced with `openapi_first`
 
-The API is described by a hand-written [OpenAPI 3.0.3](https://spec.openapis.org/oas/v3.0.3) document, `docs/openapi.yaml`. It is the single source of truth for paths, parameters, request bodies, responses and error types. Its schemas are written in the OpenAPI Schema Object, which is an extended subset of JSON Schema.
+The API is described by a hand-written [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0) document, `docs/openapi.yaml`. It is the single source of truth for paths, parameters, request bodies, responses and error types. Its schemas are JSON Schema 2020-12.
 
-The document itself isn't written yet. It will be added together with the endpoints, once their full shape is settled. Until then, this ADR defines the conventions it has to follow.
+The document is loaded once at boot (`config/initializers/openapi_first.rb`) and enforced with [`openapi_first`](https://github.com/ahx/openapi_first), in two places:
 
-The contract is enforced in two places with [`committee`](https://github.com/interagent/committee):
+- **Requests, at runtime.** A `before_action` in `ApplicationController` validates the path, query and body of every request against the contract. An invalid request is answered with a problem (usually 400) and never reaches the action. Request bodies set `additionalProperties: false`, so unknown fields are rejected rather than silently ignored. Patterns are evaluated as ECMA-262 regular expressions, as OpenAPI requires; in Ruby's dialect `$` would also match before a trailing newline.
+- **Responses and coverage, in tests.** `OpenapiFirst::Test` observes the Rails app in request specs. Every request and response is validated against the contract, and a mismatch fails the spec. It also tracks which documented responses the specs exercised, and fails the suite when any of them were never exercised. Responses aren't validated at runtime, because that would slow down every request to catch bugs the specs already catch.
 
-- **Requests, at runtime.** `Committee::Middleware::RequestValidation` runs in the Rails middleware stack and validates the parameters and bodies of every request against `docs/openapi.yaml`. Invalid requests are rejected with 400 and never reach a controller. A custom committee error class renders these errors as `application/problem+json`. Request bodies set `additionalProperties: false`, so unknown fields are rejected rather than silently ignored.
-- **Responses, in tests.** Request specs call `assert_response_schema_confirm` from [`committee-rails`](https://github.com/willnet/committee-rails) for every response, so a response that doesn't match the contract fails the suite. Responses aren't validated at runtime, because that would slow down every request to catch bugs the specs already catch.
+Validation runs in a controller callback rather than in the gem's Rack middleware, for three reasons. The middleware rejects every path missing from the contract, including Rails' `/up` health check. Contract errors and domain errors are both rendered by `ApplicationController`, so there's one renderer for problem details. And the middleware's custom error class would have to be loaded during boot, outside Rails' autoloading.
 
 Responsibilities are split between the layers:
 
@@ -82,16 +83,20 @@ Responsibilities are split between the layers:
 - **[`rswag`](https://github.com/rswag/rswag):** request specs written in its DSL generate the OpenAPI document and serve Swagger UI. The documentation is then derived from the tests instead of being a contract the tests check, and the specs are shaped by the documentation DSL. It also doesn't validate incoming requests at runtime.
 - **Standalone JSON Schema files with `json_schemer` or `json_matchers`:** full, current JSON Schema, but no description of paths, parameters or status codes. Mapping schemas to endpoints and validating requests would be custom code.
 - **Request validation in controllers (strong parameters, `dry-validation`):** works, but duplicates the contract in Ruby, and the documentation would be a separate artifact that can drift.
-- **OpenAPI 3.1:** its schemas are full JSON Schema 2020-12. However, committee and its parser target OpenAPI 3.0, and their support for 3.1 couldn't be confirmed. 3.0.3 is fully supported, and the document can be migrated to 3.1 once the tooling supports it.
+- **[`committee`](https://github.com/interagent/committee) with `committee-rails`:** the most widely used Ruby option, with request validation middleware and a response assertion for tests. Its parser targets OpenAPI 3.0, whose schemas are only a subset of JSON Schema, and we couldn't confirm support for 3.1. It also has no coverage tracking, so documented responses that no spec exercises go unnoticed.
+- **[`skooma`](https://github.com/skryukov/skooma):** supports OpenAPI 3.1 and tracks coverage, but only validates in tests, so requests would need a second validation mechanism at runtime.
+- **`openapi_first`'s Rack middleware** instead of a controller callback: see the reasons above.
 
 ## Consequences
 
 - (+) The whole API is described in one document that a reviewer can read, or import into Swagger UI or Postman.
 - (+) Controllers and domains can assume requests have the documented shape. Malformed input is rejected in one place, with a consistent error.
-- (+) Every request spec checks its response against the contract, so the documentation can't silently drift from responses covered by the specs.
+- (+) Every request spec checks its request and response against the contract, and coverage tracking fails the suite when a documented response is never exercised, so the documentation can't silently drift from the code.
 - (+) Errors are consistent and machine-readable: clients branch on `type` and `status`, and can map `errors[].pointer` to form fields.
-- (−) The contract is written by hand, so every API change touches both `docs/openapi.yaml` and the code. Drift is caught only for requests and responses the specs exercise.
-- (−) `committee` and `committee-rails` are extra dependencies, and their compatibility with Ruby 4.0 and Rails 8.1 still has to be verified when they're added.
-- (−) OpenAPI 3.0 schemas aren't full JSON Schema. For example, nullable fields use `nullable: true` rather than `type: [string, "null"]`.
+- (−) The contract is written by hand, so every API change touches both `docs/openapi.yaml` and the code.
+- (−) With strict coverage, a run of a single spec file reports the rest of the contract as uncovered, so strict coverage has to be limited to full-suite runs.
+- (−) `openapi_first` is less widely known than committee, and it's one more runtime dependency.
+- (−) Because validation runs after routing, a URL that matches no route gets Rails' default 404 rather than a problem details response.
+- (−) The contract is loaded at boot, so in development the server has to be restarted after `docs/openapi.yaml` changes.
 - (−) Clients see two error statuses for invalid input (400 for shape, 422 for domain rules), which they have to handle separately.
 - (−) The `urn:` problem types are stable identifiers, but they don't resolve to documentation. Their meaning is documented only in `docs/openapi.yaml` and this ADR.

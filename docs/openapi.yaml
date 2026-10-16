@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: Library API
   version: 0.1.0
@@ -237,9 +237,8 @@ components:
           format: date
           example: "2026-10-01"
         returned_at:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
           description: "`null` while the book hasn't been returned."
           example: "2026-09-20T15:45:00Z"
 
@@ -260,10 +259,9 @@ components:
           $ref: "#/components/schemas/BookStatus"
         current_borrowing:
           description: Who borrowed the book and when. `null` when the book is available.
-          type: object
-          nullable: true
-          allOf:
+          anyOf:
             - $ref: "#/components/schemas/CurrentBorrowing"
+            - type: "null"
 
     BookDetail:
       type: object
@@ -280,10 +278,9 @@ components:
           $ref: "#/components/schemas/BookStatus"
         current_borrowing:
           description: Who borrowed the book and when. `null` when the book is available.
-          type: object
-          nullable: true
-          allOf:
+          anyOf:
             - $ref: "#/components/schemas/CurrentBorrowing"
+            - type: "null"
         borrowings:
           type: array
           description: The full borrowing history, newest first. Includes the current borrowing.
