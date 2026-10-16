@@ -47,6 +47,7 @@ Rules:
 - (+) Domains can be tested in isolation through their public interfaces.
 - (+) Moving to packwerk later mostly means adding `package.yml` files, because the layout and rules already match.
 - (−) Boundaries are enforced only by convention and code review. Nothing stops a controller or another domain from referencing `Catalog::Book` directly.
+- (−) Foreign keys couple domains at the schema level: a domain can't hard-delete rows that another domain references (Catalog books referenced by Lending borrowings, see ADR 6), and moving a domain to its own database would mean dropping its foreign keys. Packwerk-style checks wouldn't catch this, because they only see Ruby constants.
 - (−) Returning value objects instead of models means some mapping code, and the HTTP layer makes more calls to compose responses.
 - (−) Rails generators put files in the default directories (`rails g model Catalog::Book` writes to `app/models/catalog/`), so generated files have to be moved. For namespaced models the generator also adds a `table_name_prefix` module and a prefixed table name, which have to be removed.
 - (−) Mailer templates still live in `app/views/<mailer_name>/`, outside the domain directory.
