@@ -42,7 +42,8 @@ Tests use RSpec with FactoryBot (`create(:book)` syntax) and shoulda-matchers. S
 - Books are addressed by serial number in URLs. Borrow/return are action endpoints (`POST /books/:serial_number/borrow|return`). Books are soft-deleted; serial numbers are never reused. There are no reader endpoints yet (planned for later); readers come from seed data.
 - Authors are authority records (ADR 0007): `Catalog` owns `authors` (name unique case-insensitively) and `book_authors` (many-to-many, at least one author per book). The API refers to authors by ID (`author_ids`); there are no author endpoints yet, so authors come from seed data. Books are soft-deleted via `deleted_at` (ADR 0006); always query them through the `active` scope (not deleted; unrelated to lending availability), never a `default_scope`.
 - `Readers` owns `readers` (six-digit card number, full name, email unique case-insensitively and normalized to lowercase). Its interface: `find_reader(library_card_number)` and `list_readers(ids:)`.
-- Planned design, not yet implemented: the `borrowings` table (`Lending`). A book's status comes from its open borrowing (`returned_at IS NULL`), enforced by a partial unique index. Reminders come from one daily recurring job rather than delayed jobs per borrowing.
+- `Lending` owns `borrowings` (ADR 0008). A book's status is derived from its current borrowing (`returned_at IS NULL`, the `current` scope), enforced by a partial unique index; there is no status column. Loans last 30 days; `due_on` is a date in the library's time zone (`config.time_zone = "Europe/Warsaw"`), while timestamps are returned in UTC. Interface: `borrow_book`, `return_book`, `current_borrowings(book_ids:)` (a hash by book ID) and `borrowing_history(book_id:)`.
+- Planned, not yet implemented: reminders come from one daily recurring job rather than delayed jobs per borrowing.
 
 ## Conventions
 
