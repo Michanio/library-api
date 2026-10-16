@@ -33,7 +33,9 @@ module LibraryApi
     # These settings can be overridden in specific environments using the files
     # in config/environments, which are processed later.
     #
-    # config.time_zone = "Central Time (US & Canada)"
+    # The library's time zone: due dates and reminder days follow its calendar.
+    # Timestamps are still stored, and returned by the API, in UTC.
+    config.time_zone = "Europe/Warsaw"
     # config.eager_load_paths << Rails.root.join("extras")
 
     # Only loads a smaller set of middleware suitable for API only apps.
