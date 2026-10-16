@@ -28,7 +28,7 @@ RSpec.describe "Contract validation", type: :request do
       "status" => 400,
       "errors" => contain_exactly(
         { "pointer" => "/serial_number", "detail" => "is required" },
-        { "pointer" => "/author", "detail" => "is required" }
+        { "pointer" => "/author_ids", "detail" => "is required" }
       )
     )
   end

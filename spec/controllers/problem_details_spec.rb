@@ -17,12 +17,12 @@ RSpec.describe ProblemDetails do
       expect(problem).to include(type: "urn:library-api:problem:invalid-request", title: "Invalid request", status: 400)
       expect(problem[:errors]).to contain_exactly(
         { pointer: "/serial_number", detail: "is required" },
-        { pointer: "/author", detail: "is required" }
+        { pointer: "/author_ids", detail: "is required" }
       )
     end
 
     it "points at fields that don't match their schema" do
-      problem = problem_for("/books", body: { serial_number: "12345a", title: "Dune", author: "Frank Herbert" }.to_json)
+      problem = problem_for("/books", body: { serial_number: "12345a", title: "Dune", author_ids: [ 1 ] }.to_json)
 
       expect(problem[:errors]).to contain_exactly(
         { pointer: "/serial_number", detail: a_string_including("does not match pattern") }
@@ -30,13 +30,13 @@ RSpec.describe ProblemDetails do
     end
 
     it "rejects a serial number with a trailing newline" do
-      problem = problem_for("/books", body: { serial_number: "123456\n", title: "Dune", author: "Frank Herbert" }.to_json)
+      problem = problem_for("/books", body: { serial_number: "123456\n", title: "Dune", author_ids: [ 1 ] }.to_json)
 
       expect(problem[:errors]).to contain_exactly(a_hash_including(pointer: "/serial_number"))
     end
 
     it "reports fields the contract doesn't allow" do
-      problem = problem_for("/books", body: { serial_number: "000123", title: "Dune", author: "Frank Herbert", isbn: "x" }.to_json)
+      problem = problem_for("/books", body: { serial_number: "000123", title: "Dune", author_ids: [ 1 ], isbn: "x" }.to_json)
 
       expect(problem[:errors]).to contain_exactly({ pointer: "/isbn", detail: "is not allowed" })
     end

@@ -27,6 +27,7 @@ Rules:
 
 - **Each domain owns its tables and models.** Only the owning domain reads or writes its tables. Table names stay unprefixed (`books`, not `catalog_books`).
 - **Each domain exposes a public interface** as module methods on the domain module itself, defined in `app/domains/<domain>.rb` (for example, `Lending.borrow(book_id:, reader_id:)`). Everything else inside the domain (models, queries, jobs) is private by convention.
+- **Each interface method is a one-line delegation to a service object** in the domain directory, named after the operation (`Catalog.add_book` calls `Catalog::AddBook.call`), even when the operation itself is short. This keeps the interface readable as a list of what the domain offers, and gives every operation the same shape and its own spec. Service objects are private to the domain like everything else in it.
 - **The public interface returns value objects (`Data.define`), not Active Record models.** Otherwise callers could update another domain's records through the returned object.
 - **No Active Record associations across domains.** Domains refer to each other's records by ID. Database foreign keys are still used for integrity.
 - **Dependencies point one way:** `Lending` may call `Catalog` and `Readers`. `Catalog` and `Readers` don't know about `Lending`.
