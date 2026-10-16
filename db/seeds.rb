@@ -1,9 +1,18 @@
-# This file should ensure the existence of records required to run the application in every environment (production,
-# development, test). The code here should be idempotent so that it can be executed at any point in every environment.
-# The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
-#
-# Example:
-#
-#   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
-#     MovieGenre.find_or_create_by!(name: genre_name)
-#   end
+# Idempotent seed data, loaded by `bin/rails db:seed` and by `db:prepare` on a new database.
+
+# Authors are authority records (ADR 0007). There are no author endpoints yet, so these
+# are the authors books can be added with; their IDs appear in GET /books responses.
+[
+  "Frank Herbert",
+  "Ursula K. Le Guin",
+  "Stanisław Lem",
+  "Andrzej Sapkowski",
+  "George Orwell",
+  "Jane Austen",
+  "Fyodor Dostoevsky",
+  "David Thomas",
+  "Andrew Hunt",
+  "Martin Fowler",
+  "Kent Beck",
+  "Sandi Metz"
+].each { |name| Catalog::Author.find_or_create_by!(name:) }

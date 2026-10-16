@@ -17,7 +17,8 @@ info:
     - Books are addressed by serial number. Borrowing and returning are action endpoints
       (`POST /books/{serial_number}/borrow`, `POST /books/{serial_number}/return`).
 
-    A loan lasts 30 days. Deleted books are hidden from the API, but their borrowing history is kept.
+    A loan lasts 30 days. Deleted books are hidden from the API, but their borrowing history is kept (ADR 6).
+    Authors are authority records referred to by ID (ADR 7); until author endpoints exist, they come from seed data.
     There are no reader endpoints yet. Readers are created with seed data.
 servers:
   - url: http://localhost:3000
@@ -187,6 +188,26 @@ components:
       type: string
       enum: [available, borrowed]
 
+    Author:
+      type: object
+      description: An author's authority record (ADR 7). Future `/authors` endpoints will return this same object.
+      required: [id, name]
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          example: 3
+        name:
+          type: string
+          example: David Thomas
+
+    AuthorList:
+      type: array
+      description: The book's authors, ordered by name. A book always has at least one.
+      minItems: 1
+      items:
+        $ref: "#/components/schemas/Author"
+
     Reader:
       type: object
       description: A library reader. Future `/readers` endpoints will return this same object.
@@ -244,7 +265,7 @@ components:
 
     Book:
       type: object
-      required: [serial_number, title, author, status, current_borrowing]
+      required: [serial_number, title, authors, status, current_borrowing]
       additionalProperties: false
       properties:
         serial_number:
@@ -252,9 +273,8 @@ components:
         title:
           type: string
           example: The Pragmatic Programmer
-        author:
-          type: string
-          example: David Thomas, Andrew Hunt
+        authors:
+          $ref: "#/components/schemas/AuthorList"
         status:
           $ref: "#/components/schemas/BookStatus"
         current_borrowing:
@@ -265,15 +285,15 @@ components:
 
     BookDetail:
       type: object
-      required: [serial_number, title, author, status, current_borrowing, borrowings]
+      required: [serial_number, title, authors, status, current_borrowing, borrowings]
       additionalProperties: false
       properties:
         serial_number:
           $ref: "#/components/schemas/SerialNumber"
         title:
           type: string
-        author:
-          type: string
+        authors:
+          $ref: "#/components/schemas/AuthorList"
         status:
           $ref: "#/components/schemas/BookStatus"
         current_borrowing:
@@ -299,7 +319,7 @@ components:
 
     CreateBookRequest:
       type: object
-      required: [serial_number, title, author]
+      required: [serial_number, title, author_ids]
       additionalProperties: false
       properties:
         serial_number:
@@ -308,14 +328,17 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-        author:
-          type: string
-          minLength: 1
-          maxLength: 255
+        author_ids:
+          type: array
+          description: IDs of existing authors. Until author endpoints exist, authors come from the seed data.
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: integer
       example:
         serial_number: "000123"
         title: The Pragmatic Programmer
-        author: David Thomas, Andrew Hunt
+        author_ids: [3, 7]
 
     BorrowBookRequest:
       type: object
@@ -433,6 +456,16 @@ components:
                 errors:
                   - pointer: /serial_number
                     detail: has already been taken
+            unknownAuthor:
+              summary: An author ID that matches no author
+              value:
+                type: urn:library-api:problem:validation-failed
+                title: Validation failed
+                status: 422
+                detail: The book could not be saved.
+                errors:
+                  - pointer: /author_ids
+                    detail: "contains unknown author IDs: 99"
             unknownReader:
               summary: No reader with this library card number
               value:
