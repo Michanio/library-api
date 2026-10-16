@@ -1,5 +1,7 @@
 class ApplicationController < ActionController::API
-  before_action :validate_request_against_contract
+  # HEAD isn't described in the contract, but every GET resource must answer it
+  # (Rails routes it to the GET action and drops the body).
+  before_action :validate_request_against_contract, unless: -> { request.head? }
 
   rescue_from Catalog::BookNotFound do |error|
     render_problem ProblemDetails.about_blank(404, detail: "#{error.message}.")

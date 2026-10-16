@@ -38,6 +38,15 @@ RSpec.describe "Books", type: :request do
       ])
     end
 
+    it "answers HEAD like GET, without a body" do
+      create(:book)
+
+      head "/books"
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to be_empty
+    end
+
     it "returns an empty list when there are no books" do
       get "/books"
 

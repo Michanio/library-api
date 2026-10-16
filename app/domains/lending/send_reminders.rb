@@ -22,7 +22,13 @@ module Lending
       readers_by_id = Readers.list_readers(ids: borrowings.map(&:reader_id).uniq).index_by(&:id)
 
       reminders.count do |kind, borrowing|
-        send_reminder(kind, borrowing, books_by_id.fetch(borrowing.book_id), readers_by_id.fetch(borrowing.reader_id))
+        book = books_by_id[borrowing.book_id]
+        reader = readers_by_id[borrowing.reader_id]
+        # A borrowed book can't be deleted, but if one ever is, skip it rather than
+        # fail the whole run and leave every other reader without a reminder.
+        next skip(kind, borrowing) unless book && reader
+
+        send_reminder(kind, borrowing, book, reader)
       end
     end
 
@@ -36,6 +42,13 @@ module Lending
       # Due today, or earlier if the reminder was missed.
       def due_today
         Borrowing.current.where(due_today_reminder_sent_at: nil, due_on: ..@today)
+      end
+
+      def skip(kind, borrowing)
+        Rails.logger.warn(
+          "[SendReminders] Skipped the #{kind} reminder for borrowing #{borrowing.id}: its book or reader no longer exists"
+        )
+        false
       end
 
       # Claims the reminder with a conditional update, so concurrent runs can't both

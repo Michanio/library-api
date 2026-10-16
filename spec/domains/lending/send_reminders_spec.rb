@@ -76,6 +76,16 @@ RSpec.describe Lending::SendReminders do
     expect { expect(send_reminders).to eq(0) }.not_to have_enqueued_mail
   end
 
+  it "skips a loan whose book was deleted and still reminds everyone else" do
+    deleted_book = create(:book, :deleted)
+    create(:borrowing, book_id: deleted_book.id, reader_id: reader.id, due_on: today + 3)
+    borrowing(due_on: today + 3)
+    allow(Rails.logger).to receive(:warn)
+
+    expect { expect(send_reminders).to eq(1) }.to reminder(:due_soon, due_on: today + 3)
+    expect(Rails.logger).to have_received(:warn).with(a_string_including("Skipped the due_soon reminder"))
+  end
+
   it "uses the library's date by default" do
     borrowing(due_on: Date.current)
 
