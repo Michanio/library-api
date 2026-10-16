@@ -9,6 +9,13 @@ RSpec.describe Catalog::ListBooks do
     expect(described_class.call.map(&:serial_number)).to eq(%w[000100 000200])
   end
 
+  it "returns only the books with the given IDs" do
+    wanted = create(:book, serial_number: "000100")
+    create(:book, serial_number: "000200")
+
+    expect(described_class.call(ids: [ wanted.id ]).map(&:id)).to eq([ wanted.id ])
+  end
+
   it "returns an empty list when there are no books" do
     expect(described_class.call).to eq([])
   end

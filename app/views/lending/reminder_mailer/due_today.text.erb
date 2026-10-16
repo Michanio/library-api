@@ -1,0 +1,11 @@
+Dear <%= @full_name %>,
+
+<% if @overdue -%>
+the book "<%= @title %>" (serial number <%= @serial_number %>) was due back at the library on <%= @due_on_text %>.
+<% else -%>
+the book "<%= @title %>" (serial number <%= @serial_number %>) is due back at the library today, <%= @due_on_text %>.
+<% end -%>
+
+Please return it as soon as possible.
+
+Your library

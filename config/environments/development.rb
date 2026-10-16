@@ -26,14 +26,25 @@ Rails.application.configure do
   # Change to :null_store to avoid any caching.
   config.cache_store = :memory_store
 
-  # Don't care if the mailer can't send.
-  config.action_mailer.raise_delivery_errors = false
+  # Emails are written to the log instead of being sent (config/initializers/log_delivery.rb).
+  config.action_mailer.delivery_method = :log
+  config.action_mailer.raise_delivery_errors = true
 
   # Make template changes take effect immediately.
   config.action_mailer.perform_caching = false
 
   # Set localhost to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
+
+  # With RAILS_LOG_TO_STDOUT (set for the jobs service in compose.yaml), also log to
+  # STDOUT, so `docker compose logs jobs` shows the jobs, including logged emails.
+  # The server logs to the console anyway.
+  if ENV["RAILS_LOG_TO_STDOUT"].present?
+    config.logger = ActiveSupport::BroadcastLogger.new(
+      ActiveSupport::Logger.new(config.paths["log"].first),
+      ActiveSupport::Logger.new(STDOUT)
+    )
+  end
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
