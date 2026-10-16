@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_16_194238) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_16_202024) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -38,6 +38,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_16_194238) do
     t.datetime "updated_at", null: false
     t.index ["serial_number"], name: "index_books_on_serial_number", unique: true
     t.check_constraint "serial_number::text ~ '^[0-9]{6}$'::text", name: "books_serial_number_six_digits"
+  end
+
+  create_table "readers", force: :cascade do |t|
+    t.string "library_card_number", limit: 6, null: false
+    t.string "full_name", null: false
+    t.string "email", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "lower((email)::text)", name: "index_readers_on_lower_email", unique: true
+    t.index ["library_card_number"], name: "index_readers_on_library_card_number", unique: true
+    t.check_constraint "library_card_number::text ~ '^[0-9]{6}$'::text", name: "readers_library_card_number_six_digits"
   end
 
   add_foreign_key "book_authors", "authors"
