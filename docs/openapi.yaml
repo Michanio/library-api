@@ -1,0 +1,448 @@
+openapi: 3.0.3
+info:
+  title: Library API
+  version: 0.1.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  description: |
+    API for library staff to manage books and their borrowing status.
+
+    Conventions (see ADR 5, `docs/adr/0005-use-plain-json-with-rfc-9457-errors-and-an-openapi-contract.md`):
+
+    - Responses are plain JSON with `snake_case` keys. Collections are wrapped in an object keyed by the resource name.
+    - Serial numbers and library card numbers are six-digit strings, so leading zeros are kept.
+    - Timestamps are RFC 3339 `date-time` strings in UTC. Due dates are `date` strings.
+    - Errors use RFC 9457 problem details (`application/problem+json`).
+    - Books are addressed by serial number. Borrowing and returning are action endpoints
+      (`POST /books/{serial_number}/borrow`, `POST /books/{serial_number}/return`).
+
+    A loan lasts 30 days. Deleted books are hidden from the API, but their borrowing history is kept.
+    There are no reader endpoints yet. Readers are created with seed data.
+servers:
+  - url: http://localhost:3000
+    description: Local Docker Compose setup
+# Authentication and authorization are out of scope for this task.
+security: []
+tags:
+  - name: Books
+    description: Books, their status and their borrowing history.
+  - name: Lending
+    description: Borrowing and returning books.
+
+paths:
+  /books:
+    get:
+      tags: [Books]
+      operationId: listBooks
+      summary: List all books with their current status
+      description: Deleted books aren't listed.
+      responses:
+        "200":
+          description: All books, ordered by serial number.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookList"
+    post:
+      tags: [Books]
+      operationId: createBook
+      summary: Add a new book
+      description: |
+        The serial number must not belong to any other book, including deleted ones.
+        Serial numbers are never reused, so a borrowing history always refers to one physical book.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookRequest"
+      responses:
+        "201":
+          description: The book was created.
+          headers:
+            Location:
+              description: URL of the new book.
+              schema:
+                type: string
+                example: /books/000123
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /books/{serial_number}:
+    parameters:
+      - $ref: "#/components/parameters/SerialNumber"
+    get:
+      tags: [Books]
+      operationId: getBook
+      summary: Show a book with its full borrowing history
+      responses:
+        "200":
+          description: The book and all of its borrowings, newest first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookDetail"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Books]
+      operationId: deleteBook
+      summary: Delete a book
+      description: |
+        The book is soft-deleted: it disappears from the API (later requests return 404),
+        but its borrowing history is kept. A borrowed book can't be deleted until it's returned.
+      responses:
+        "204":
+          description: The book was deleted.
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/BookBorrowed"
+
+  /books/{serial_number}/borrow:
+    parameters:
+      - $ref: "#/components/parameters/SerialNumber"
+    post:
+      tags: [Lending]
+      operationId: borrowBook
+      summary: Lend a book to a reader
+      description: Marks the book as borrowed by the reader for 30 days, starting now.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BorrowBookRequest"
+      responses:
+        "200":
+          description: The book, now borrowed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/BookBorrowed"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /books/{serial_number}/return:
+    parameters:
+      - $ref: "#/components/parameters/SerialNumber"
+    post:
+      tags: [Lending]
+      operationId: returnBook
+      summary: Record a book's return
+      description: Closes the book's open borrowing and makes the book available. The request has no body.
+      responses:
+        "200":
+          description: The book, now available.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/BookNotBorrowed"
+
+components:
+  parameters:
+    SerialNumber:
+      name: serial_number
+      in: path
+      required: true
+      description: The book's six-digit serial number.
+      schema:
+        $ref: "#/components/schemas/SerialNumber"
+
+  schemas:
+    SerialNumber:
+      type: string
+      pattern: '^\d{6}$'
+      example: "000123"
+
+    LibraryCardNumber:
+      type: string
+      pattern: '^\d{6}$'
+      example: "004217"
+
+    BookStatus:
+      type: string
+      enum: [available, borrowed]
+
+    Reader:
+      type: object
+      description: A library reader. Future `/readers` endpoints will return this same object.
+      required: [library_card_number, full_name, email]
+      additionalProperties: false
+      properties:
+        library_card_number:
+          $ref: "#/components/schemas/LibraryCardNumber"
+        full_name:
+          type: string
+          example: Jane Doe
+        email:
+          type: string
+          format: email
+          example: jane.doe@example.com
+
+    CurrentBorrowing:
+      type: object
+      description: The book's open borrowing.
+      required: [reader, borrowed_at, due_on]
+      additionalProperties: false
+      properties:
+        reader:
+          $ref: "#/components/schemas/Reader"
+        borrowed_at:
+          type: string
+          format: date-time
+          example: "2026-10-01T09:30:00Z"
+        due_on:
+          type: string
+          format: date
+          example: "2026-10-31"
+
+    Borrowing:
+      type: object
+      description: One entry in a book's borrowing history.
+      required: [reader, borrowed_at, due_on, returned_at]
+      additionalProperties: false
+      properties:
+        reader:
+          $ref: "#/components/schemas/Reader"
+        borrowed_at:
+          type: string
+          format: date-time
+          example: "2026-09-01T12:00:00Z"
+        due_on:
+          type: string
+          format: date
+          example: "2026-10-01"
+        returned_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: "`null` while the book hasn't been returned."
+          example: "2026-09-20T15:45:00Z"
+
+    Book:
+      type: object
+      required: [serial_number, title, author, status, current_borrowing]
+      additionalProperties: false
+      properties:
+        serial_number:
+          $ref: "#/components/schemas/SerialNumber"
+        title:
+          type: string
+          example: The Pragmatic Programmer
+        author:
+          type: string
+          example: David Thomas, Andrew Hunt
+        status:
+          $ref: "#/components/schemas/BookStatus"
+        current_borrowing:
+          description: Who borrowed the book and when. `null` when the book is available.
+          type: object
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CurrentBorrowing"
+
+    BookDetail:
+      type: object
+      required: [serial_number, title, author, status, current_borrowing, borrowings]
+      additionalProperties: false
+      properties:
+        serial_number:
+          $ref: "#/components/schemas/SerialNumber"
+        title:
+          type: string
+        author:
+          type: string
+        status:
+          $ref: "#/components/schemas/BookStatus"
+        current_borrowing:
+          description: Who borrowed the book and when. `null` when the book is available.
+          type: object
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CurrentBorrowing"
+        borrowings:
+          type: array
+          description: The full borrowing history, newest first. Includes the current borrowing.
+          items:
+            $ref: "#/components/schemas/Borrowing"
+
+    BookList:
+      type: object
+      required: [books]
+      additionalProperties: false
+      properties:
+        books:
+          type: array
+          items:
+            $ref: "#/components/schemas/Book"
+
+    CreateBookRequest:
+      type: object
+      required: [serial_number, title, author]
+      additionalProperties: false
+      properties:
+        serial_number:
+          $ref: "#/components/schemas/SerialNumber"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        author:
+          type: string
+          minLength: 1
+          maxLength: 255
+      example:
+        serial_number: "000123"
+        title: The Pragmatic Programmer
+        author: David Thomas, Andrew Hunt
+
+    BorrowBookRequest:
+      type: object
+      required: [library_card_number]
+      additionalProperties: false
+      properties:
+        library_card_number:
+          $ref: "#/components/schemas/LibraryCardNumber"
+
+    Problem:
+      type: object
+      description: |
+        RFC 9457 problem details. `type` is one of:
+
+        - `about:blank`: nothing beyond the HTTP status (e.g. 404).
+        - `urn:library-api:problem:invalid-request` (400): the request doesn't match this contract.
+        - `urn:library-api:problem:validation-failed` (422): the request breaks a domain rule.
+        - `urn:library-api:problem:book-borrowed` (409): the book is borrowed.
+        - `urn:library-api:problem:book-not-borrowed` (409): the book isn't borrowed.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        errors:
+          type: array
+          description: Field-level errors.
+          items:
+            $ref: "#/components/schemas/FieldError"
+
+    FieldError:
+      type: object
+      required: [pointer, detail]
+      additionalProperties: false
+      properties:
+        pointer:
+          type: string
+          description: JSON Pointer (RFC 6901) to the field in the request body.
+          example: /serial_number
+        detail:
+          type: string
+          example: has already been taken
+
+  responses:
+    InvalidRequest:
+      description: The request doesn't match this contract.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: urn:library-api:problem:invalid-request
+            title: Invalid request
+            status: 400
+            detail: "#/components/schemas/CreateBookRequest missing required parameters: title"
+
+    NotFound:
+      description: No book with this serial number, or the book was deleted.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: about:blank
+            title: Not Found
+            status: 404
+            detail: Book 000123 not found.
+
+    BookBorrowed:
+      description: The book is currently borrowed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: urn:library-api:problem:book-borrowed
+            title: Book is borrowed
+            status: 409
+            detail: Book 000123 is currently borrowed.
+
+    BookNotBorrowed:
+      description: The book isn't currently borrowed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: urn:library-api:problem:book-not-borrowed
+            title: Book is not borrowed
+            status: 409
+            detail: Book 000123 is not currently borrowed.
+
+    ValidationFailed:
+      description: The request is well-formed but breaks a domain rule.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            duplicateSerialNumber:
+              summary: Serial number already taken
+              value:
+                type: urn:library-api:problem:validation-failed
+                title: Validation failed
+                status: 422
+                detail: The book could not be saved.
+                errors:
+                  - pointer: /serial_number
+                    detail: has already been taken
+            unknownReader:
+              summary: No reader with this library card number
+              value:
+                type: urn:library-api:problem:validation-failed
+                title: Validation failed
+                status: 422
+                detail: The book could not be borrowed.
+                errors:
+                  - pointer: /library_card_number
+                    detail: does not match any reader
