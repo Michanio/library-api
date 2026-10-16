@@ -16,7 +16,7 @@ module Catalog
   end
 
   def self.add_book(serial_number:, title:, author_ids:) = AddBook.call(serial_number:, title:, author_ids:)
-  def self.list_books = ListBooks.call
+  def self.list_books(ids: nil) = ListBooks.call(ids:)
   def self.find_book(serial_number) = FindBook.call(serial_number)
   def self.delete_book(serial_number) = DeleteBook.call(serial_number)
 end

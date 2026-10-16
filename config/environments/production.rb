@@ -51,6 +51,10 @@ Rails.application.configure do
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
   # config.action_mailer.raise_delivery_errors = false
 
+  # Emails are written to the log instead of being sent (config/initializers/log_delivery.rb).
+  # Replace with SMTP settings for real delivery.
+  config.action_mailer.delivery_method = :log
+
   # Set host to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: "example.com" }
 

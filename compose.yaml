@@ -41,6 +41,12 @@ services:
   jobs:
     <<: *app
     command: bin/jobs
+    environment:
+      DB_HOST: db
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      # Show job logs, including the logged reminder emails, in `docker compose logs jobs`.
+      RAILS_LOG_TO_STDOUT: "1"
     depends_on:
       # Waits for web, which prepares the databases (including Solid Queue tables).
       web:
