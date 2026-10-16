@@ -2,7 +2,7 @@
 
 A JSON API for library staff to manage books and their borrowing status: add and delete books, list them with their status, show a book's full borrowing history, lend and return books, and send readers return reminders. Built with Rails 8.1 (API-only), Ruby 4.0 and PostgreSQL 17.
 
-- **Contract:** [`docs/openapi.yaml`](docs/openapi.yaml) (OpenAPI 3.1). Every request is validated against it, and the test suite fails unless every documented response is exercised.
+- **Contract:** [`docs/openapi.yaml`](docs/openapi.yaml) (OpenAPI 3.1). Every request is validated against it, and the test suite fails unless every documented response is exercised. With the app running, browse and try it at <http://localhost:3000/docs>.
 - **Design decisions:** [`docs/adr/`](docs/adr/), summarised [below](#architecture-decision-records).
 
 ## Requirements
@@ -33,7 +33,7 @@ This builds the development image and starts three services:
 | `web` | Runs `bin/rails db:prepare` (creates and migrates the databases, and loads the seed data into a new database), then the Rails server on <http://localhost:3000> |
 | `jobs` | Runs `bin/jobs`: the Solid Queue worker and the scheduler for the daily reminder job. It starts once `web` is healthy, and logs to the console, including the reminder emails. |
 
-The app is up when <http://localhost:3000/up> returns 200.
+The app is up when <http://localhost:3000/up> returns 200. Interactive API docs (Swagger UI) are at <http://localhost:3000/docs>.
 
 The source code is bind-mounted into the containers, so code changes apply without a rebuild (restart `web` after changing `docs/openapi.yaml`, which is loaded at boot). After changing the `Gemfile`, rebuild the image with `docker compose build`.
 
@@ -134,7 +134,7 @@ Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details (`
 | 409 `book-borrowed` / `book-not-borrowed` | Borrowing or deleting a borrowed book; returning a book that isn't borrowed |
 | 422 `validation-failed` | Well-formed, but a rule says no: serial number taken, unknown author ID or library card number |
 
-The full contract, with every schema and example, is [`docs/openapi.yaml`](docs/openapi.yaml). Paste it into <https://editor.swagger.io> for an interactive view.
+The full contract, with every schema and example, is [`docs/openapi.yaml`](docs/openapi.yaml). In development, <http://localhost:3000/docs> shows it in Swagger UI, where "Try it out" sends real requests to the running app. The page is served by Rails in development only and loads Swagger UI from a CDN, so the browser needs internet access.
 
 ### Return reminders
 
