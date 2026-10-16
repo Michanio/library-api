@@ -23,6 +23,7 @@ docker compose exec web bin/rails db:migrate         # also dumps db/schema.rb a
 docker compose exec web bin/rails db:test:prepare    # loads db/schema.rb into the test DB; rerun after migrations
 docker compose exec web bundle exec rspec            # all specs
 docker compose exec web bundle exec rspec spec/path_spec.rb:LINE
+docker compose exec web env OPENAPI_COVERAGE=strict bundle exec rspec  # as CI: fails unless every documented response is exercised
 docker compose exec web bin/rubocop                  # lint (rubocop-rails-omakase)
 docker compose exec web bin/brakeman --no-pager
 docker compose exec web bin/ci                       # steps from config/ci.rb
