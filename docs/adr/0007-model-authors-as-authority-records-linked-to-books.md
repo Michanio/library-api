@@ -24,7 +24,7 @@ Authors are records of their own in the `Catalog` domain, linked to books many-t
 - **Keep the free-text `author` field, with whitespace normalised:** matches the brief exactly and needs no new tables, but does nothing against typos or reversed names.
 - **An `authors` table, found or created by the name typed in `POST /books`:** easy to use, but a typo or reversed name silently creates a new author, so the problem stays.
 - **Referring to authors by exact name in `POST /books`, rejecting unknown names:** protects against typos without needing IDs, but would have to change in a breaking way once author endpoints exist and clients work with IDs.
-- **Separate first and last name fields:** fixes the reversed-order problem only, and doesn't fit single-name authors, pseudonyms, organisations as authors, or names where the family name comes first.
+- **Separate first and last name fields:** fixes the reversed-order problem only, and doesn't fit single-name authors, pseudonyms, organisations as authors, or names where the family name comes first. Sorting by surname, the one real benefit, will instead come from a `sort_name` ("Herbert, Frank") added together with the author endpoints, as library catalogues do.
 - **One author per book (`books.author_id`):** simpler, but wrong for the many books with several authors.
 
 ## Consequences

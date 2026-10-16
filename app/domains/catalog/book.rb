@@ -14,6 +14,11 @@ module Catalog
     validates :title, presence: true, length: { maximum: 255 }
     validates :authors, presence: true
 
+    def self.find_kept!(serial_number)
+      kept.includes(:authors).find_by(serial_number:) or
+        raise BookNotFound, "Book #{serial_number} not found"
+    end
+
     def soft_delete!
       update!(deleted_at: Time.current)
     end
