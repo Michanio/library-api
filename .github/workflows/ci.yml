@@ -78,4 +78,6 @@ jobs:
           DB_HOST: localhost
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
+          # Fail unless every request and response in docs/openapi.yaml is exercised.
+          OPENAPI_COVERAGE: strict
         run: bin/rails db:test:prepare && bundle exec rspec

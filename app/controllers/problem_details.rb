@@ -4,6 +4,7 @@ class ProblemDetails < Data.define(:status, :type, :title, :detail, :errors)
   INVALID_REQUEST = "urn:library-api:problem:invalid-request"
   VALIDATION_FAILED = "urn:library-api:problem:validation-failed"
   BOOK_BORROWED = "urn:library-api:problem:book-borrowed"
+  BOOK_NOT_BORROWED = "urn:library-api:problem:book-not-borrowed"
 
   # Statuses for openapi_first failures that aren't about the request's content.
   # Every other failure means the request doesn't match the contract (400).
@@ -28,6 +29,13 @@ class ProblemDetails < Data.define(:status, :type, :title, :detail, :errors)
 
   def self.book_borrowed(serial_number)
     new(status: 409, type: BOOK_BORROWED, title: "Book is borrowed", detail: "Book #{serial_number} is currently borrowed.", errors: nil)
+  end
+
+  def self.book_not_borrowed(serial_number)
+    new(
+      status: 409, type: BOOK_NOT_BORROWED, title: "Book is not borrowed",
+      detail: "Book #{serial_number} is not currently borrowed.", errors: nil
+    )
   end
 
   # Builds a problem from an OpenapiFirst::Failure.

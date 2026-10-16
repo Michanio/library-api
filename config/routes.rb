@@ -4,5 +4,10 @@ Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
 
   # The API contract is docs/openapi.yaml (ADR 0005).
-  resources :books, only: %i[index show create destroy], param: :serial_number
+  resources :books, only: %i[index show create destroy], param: :serial_number do
+    member do
+      post :borrow, to: "lending#borrow"
+      post :return, to: "lending#return_book"
+    end
+  end
 end

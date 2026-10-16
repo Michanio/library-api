@@ -5,8 +5,10 @@ require "openapi_first/test"
 # reported at the end of the run.
 OpenapiFirst::Test.setup do |test|
   test.coverage_reporter = OpenapiFirst::Test::Coverage::TerminalReporter
-  # Most endpoints don't exist yet, so uncovered parts of the contract only warn for now.
-  test.report_coverage = :warn
+  # With OPENAPI_COVERAGE=strict (set in CI), the run fails unless every documented
+  # request and response was exercised. Otherwise, e.g. when running a single spec
+  # file, uncovered parts of the contract only warn.
+  test.report_coverage = ENV["OPENAPI_COVERAGE"] == "strict" ? true : :warn
 end
 
 OpenapiFirst::Test.observe(Rails.application)
