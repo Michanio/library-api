@@ -2,6 +2,8 @@
 # See ADR 0005 for the problem types and when each status is used.
 class ProblemDetails < Data.define(:status, :type, :title, :detail, :errors)
   INVALID_REQUEST = "urn:library-api:problem:invalid-request"
+  VALIDATION_FAILED = "urn:library-api:problem:validation-failed"
+  BOOK_BORROWED = "urn:library-api:problem:book-borrowed"
 
   # Statuses for openapi_first failures that aren't about the request's content.
   # Every other failure means the request doesn't match the contract (400).
@@ -13,6 +15,19 @@ class ProblemDetails < Data.define(:status, :type, :title, :detail, :errors)
 
   def self.about_blank(status, detail: nil)
     new(status:, type: "about:blank", title: Rack::Utils::HTTP_STATUS_CODES.fetch(status), detail:, errors: nil)
+  end
+
+  # A domain rule rejected a well-formed request. `field_errors` maps request body
+  # fields to messages, e.g. { serial_number: ["has already been taken"] }.
+  def self.validation_failed(detail, field_errors)
+    errors = field_errors.flat_map do |field, messages|
+      messages.map { |message| { pointer: "/#{field}", detail: message } }
+    end
+    new(status: 422, type: VALIDATION_FAILED, title: "Validation failed", detail:, errors:)
+  end
+
+  def self.book_borrowed(serial_number)
+    new(status: 409, type: BOOK_BORROWED, title: "Book is borrowed", detail: "Book #{serial_number} is currently borrowed.", errors: nil)
   end
 
   # Builds a problem from an OpenapiFirst::Failure.
