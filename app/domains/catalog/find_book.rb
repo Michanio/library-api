@@ -8,7 +8,7 @@ module Catalog
     end
 
     def call
-      BookData.from(Book.find_kept!(@serial_number))
+      BookData.from(Book.find_active!(@serial_number))
     end
   end
 end

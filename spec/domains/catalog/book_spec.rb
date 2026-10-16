@@ -23,12 +23,12 @@ RSpec.describe Catalog::Book, type: :model do
     expect(build(:book, serial_number: "000123")).not_to be_valid
   end
 
-  describe ".kept" do
+  describe ".active" do
     it "excludes deleted books" do
-      kept = create(:book)
+      active = create(:book)
       create(:book, :deleted)
 
-      expect(described_class.kept).to contain_exactly(kept)
+      expect(described_class.active).to contain_exactly(active)
     end
   end
 

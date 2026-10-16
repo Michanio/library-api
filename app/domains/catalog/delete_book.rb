@@ -9,7 +9,7 @@ module Catalog
     end
 
     def call
-      Book.find_kept!(@serial_number).soft_delete!
+      Book.find_active!(@serial_number).soft_delete!
       nil
     end
   end
